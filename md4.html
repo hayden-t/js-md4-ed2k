@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>incremental md4</title>
+		<style>
+			body{text-align:center;font:13px Tahoma}
+			form{margin:9vh auto}
+			pre{background:#ffd;border:1px solid orange;padding:1em;margin:0 auto;display:none;text-align:left;line-height:1.25}
+		</style>
+	</head>
+	<body>
+		<h1>incremental md4/ed2k demo</h1>
+		modified/combined:<br />
+		https://github.com/satazor/js-spark-md5<br />
+		http://jsres.blogspot.com.au/2008/01/secure-hash-functions-md4-md5-sha-1.html<br />
+		<br />
+		Browser Compatibility:<br />
+		<table align="center" border="1">
+		 <tbody>
+		  <tr>
+		   <th>Firefox (Gecko)</th>
+		   <th>Chrome</th>
+		   <th>Internet Explorer</th>
+		   <th>Opera</th>
+		   <th>Safari</th>
+		  </tr>
+		  <tr>
+		   <td>3.6 (1.9.2)</td>
+		   <td>7</td>
+		   <td>10</td>
+		   <td>12.02</td>
+		   <td>6.0.2</td>
+		  </tr>
+		 </tbody>
+		</table>
+		<form method="POST" enctype="multipart/form-data" onsubmit="return false;" ><input accept=".avi, .mkv, .mp4" id=file type=file placeholder="select a file" /></form>
+		<pre id=log></pre>
+		<script src="md4.js"></script>
+		<script>
+			var log=document.getElementById("log");
+			document.getElementById("file").addEventListener("change", function() {
+				var blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
+					file = this.files[0],
+					size = file.size,
+					name = file.name,
+					chunkHashCombined = '',
+					chunkSize = 9728000, //chunksize of ed2k hash method
+					nullChunk = true; //mvgroup use "old hash method" http://mldonkey.sourceforge.net/Ed2k-hash
+					chunks = Math.ceil(file.size / chunkSize),
+					currentChunk = 0,
+					frOnload = function(e){
+						chunkHash = str_md4(e.target.result);
+								
+						log.innerHTML+="\nread chunk number "+parseInt(currentChunk+1)+" of "+chunks + " Hash: " + binl2hex(str2binl(chunkHash));						
+						chunkHashCombined += chunkHash;
+						
+						currentChunk++;
+						if (currentChunk < chunks)
+							loadNext();
+						else{
+								if(chunks > 1){
+									if(nullChunk && e.target.result.length == chunkSize)chunkHashCombined += str_md4('');
+									ed2k = hex_md4(chunkHashCombined);									
+								}else{
+									ed2k = binl2hex(str2binl(chunkHashCombined));
+							   }
+							   log.innerHTML+="\nfinished loading :)\n\ncombined hash/s:\n"+binl2hex(str2binl(chunkHashCombined))+"\n\ned2k hash:\n"+ ed2k +"\n\n";
+							   log.innerHTML+="ed2k link:\ned2k://|file|"+name+"|"+size+"|"+ed2k+"|\\";
+						   }
+					},
+					frOnerror = function () {
+						log.innerHTML+="\noops, something went wrong.";
+					};
+				function loadNext() {
+					var fileReader = new FileReader();
+					fileReader.onload = frOnload;
+					fileReader.onerror = frOnerror;
+					var start = currentChunk * chunkSize,
+						end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
+						
+					fileReader.readAsText(blobSlice.call(file, start, end));
+				};
+				log.style.display="inline-block";
+				log.innerHTML="file name: "+file.name+" ("+file.size.toString().replace(/\B(?=(?:\d{3})+(?!\d))/g, ',')+" bytes)\n";
+				log.innerHTML="chunk size: "+chunkSize+"\n";
+				loadNext();
+			});
+		</script>
+	</body>
+</html>
